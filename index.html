@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PICA Pro</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js for reactive UI -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 antialiased min-h-screen flex justify-center selection:bg-pink-500 selection:text-white"
+      x-data="picaApp()" x-init="initApp()">
+
+  <div class="w-full max-w-md md:max-w-xl bg-[#0a0a0a] min-h-screen flex flex-col justify-between shadow-2xl relative pb-20 border-x border-zinc-900">
+    
+    <!-- TOP APP BAR -->
+    <header class="bg-[#0a0a0a] pt-6 pb-4 px-4 sticky top-0 z-30 flex flex-col items-center justify-center border-b border-zinc-900/50">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-pink-600 flex items-center justify-center font-black text-sm text-white shadow-inner">
+          P
+        </div>
+        <h1 class="text-xl font-bold tracking-tight text-white leading-none">PICA Pro</h1>
+      </div>
+      <div class="flex items-center gap-2 mt-1">
+        <p class="text-[10px] text-zinc-400 font-medium">Ringkasan & KPI</p>
+        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold" :class="isCloudConnected ? 'bg-pink-950 text-pink-400 border border-pink-800' : 'bg-amber-950 text-amber-400 border border-amber-800'">
+          <span class="w-1.5 h-1.5 rounded-full" :class="isCloudConnected ? 'bg-pink-400 animate-pulse' : 'bg-amber-400'"></span>
+          <span x-text="isCloudConnected ? 'Cloud Online' : 'Offline Mode'"></span>
+        </span>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 overflow-y-auto px-4 pb-4 space-y-6 no-scrollbar">
+
+      <!-- ========================================== -->
+      <!-- MENU 1: DASHBOARD (SUMMARY & KPI EKSEKUTIF) -->
+      <!-- ========================================== -->
+      <div x-show="activeTab === 'dashboard'" x-transition:enter="transition ease-out duration-200 transform opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-6">
+        
+        <!-- BANNER UTAMA -->
+        <div class="bg-pink-600 text-white rounded-3xl p-5 shadow-lg shadow-pink-900/20 relative overflow-hidden">
+          <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <div class="flex justify-between items-start mb-4 relative z-10">
+            <div>
+              <h2 class="text-xl font-bold leading-tight">PICA Pro Dashboard</h2>
+              <p class="text-[10px] text-pink-200 font-medium mt-0.5">Problem Identification & Corrective Action</p>
+            </div>
+            <div class="bg-pink-500/80 px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-pink-400/50 shadow-sm backdrop-blur-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]"></span>
+              <span class="text-[10px] font-bold" x-text="activeProjectCount + ' Proyek Aktif'"></span>
+            </div>
+          </div>
+
+          <!-- Date Selector Toggle -->
+          <div class="bg-pink-700/60 rounded-xl p-3 mb-5 flex justify-between items-center cursor-pointer border border-pink-500/50 transition-colors hover:bg-pink-700/80 relative z-10" @click="showDateFilters = !showDateFilters">
+            <div class="flex items-center gap-2 text-xs font-semibold">
+              <i class="fa-regular fa-calendar text-pink-200"></i>
+              <span>Periode: <span x-text="formatDateShort(startDateFilter) + (startDateFilter !== endDateFilter ? ' - ' + formatDateShort(endDateFilter) : '')"></span></span>
+            </div>
+            <div class="text-[10px] font-bold flex items-center gap-1 text-pink-200">
+              Ubah Tanggal <i class="fa-solid fa-caret-down transition-transform" :class="showDateFilters ? 'rotate-180' : ''"></i>
+            </div>
+          </div>
+
+          <!-- Hidden Date Inputs -->
+          <div x-show="showDateFilters" x-collapse class="mb-5 bg-black/20 p-3 rounded-xl border border-pink-500/30">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] text-pink-200 block mb-1 font-bold uppercase">Mulai</label>
+                <input type="date" x-model="startDateFilter" @change="recalculateKPI()" class="w-full bg-pink-900/50 border border-pink-500/50 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-white font-mono">
+              </div>
+              <div>
+                <label class="text-[10px] text-pink-200 block mb-1 font-bold uppercase">Sampai</label>
+                <input type="date" x-model="endDateFilter" @change="recalculateKPI()" class="w-full bg-pink-900/50 border border-pink-500/50 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-white font-mono">
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI Stats -->
+          <div class="grid grid-cols-2 gap-4 relative z-10">
+            <div>
+              <p class="text-[9px] font-bold text-pink-200 mb-0.5 uppercase tracking-wider">JUMLAH PICA</p>
+              <div class="flex items-baseline gap-1.5">
+                <span class="text-3xl font-black tracking-tight" x-text="picaSubmittedCount"></span>
+                <span class="text-sm font-bold">Proyek</span>
+              </div>
+              <p class="text-[10px] text-pink-200 mt-1" x-text="'sudah input dari ' + activeProjectCount + ' total'"></p>
+            </div>
+            <div class="border-l border-pink-500/50 pl-4">
+              <p class="text-[9px] font-bold text-pink-200 mb-0.5 uppercase tracking-wider">TINGKAT TUNTAS (%)</p>
+              <div class="flex items-baseline gap-1">
+                <span class="text-3xl font-black tracking-tight" x-text="completionRate + '%'"></span>
+              </div>
+              <p class="text-[10px] text-pink-200 mt-1">keterisian PICA proyek</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATUS INPUT PICA -->
+        <div>
+          <h3 class="text-base font-bold text-white tracking-wide">Status Input PICA Proyek</h3>
+          <p class="text-[11px] text-zinc-400 mt-0.5 mb-3">Ketuk kartu untuk melihat proyek yang sudah atau belum input PICA</p>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Merah: Belum Input -->
+            <button @click="openQuickFilterModal('belum')" class="bg-[#16161a] rounded-3xl p-4 text-left border border-zinc-800 flex flex-col justify-between shadow-lg active:scale-95 transition-transform relative overflow-hidden group">
+              <div class="absolute inset-0 bg-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div class="w-8 h-8 rounded-xl bg-[#231a1e] border border-rose-900/30 flex items-center justify-center text-rose-500 mb-4 shadow-inner">
+                <i class="fa-solid fa-circle-exclamation text-sm"></i>
+              </div>
+              <div>
+                <div class="flex items-baseline gap-1.5 text-rose-500">
+                  <span class="text-2xl font-black" x-text="notSubmittedCount"></span>
+                  <span class="text-sm font-bold">Proyek</span>
+                </div>
+                <p class="text-xs font-bold text-zinc-100 mt-1">Open <span class="text-[10px] font-normal text-zinc-400">(Belum Input)</span></p>
+                <p class="text-[10px] text-zinc-500 mt-1">Proyek belum ada PICA</p>
+              </div>
+            </button>
+
+            <!-- Hijau: Sudah Input -->
+            <button @click="openQuickFilterModal('sudah')" class="bg-[#16161a] rounded-3xl p-4 text-left border border-zinc-800 flex flex-col justify-between shadow-lg active:scale-95 transition-transform relative overflow-hidden group">
+              <div class="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div class="w-8 h-8 rounded-xl bg-[#17231d] border border-emerald-900/30 flex items-center justify-center text-emerald-500 mb-4 shadow-inner">
+                <i class="fa-solid fa-circle-check text-sm"></i>
+              </div>
+              <div>
+                <div class="flex items-baseline gap-1.5 text-emerald-500">
+                  <span class="text-2xl font-black" x-text="submittedCount"></span>
+                  <span class="text-sm font-bold">Proyek</span>
+                </div>
+                <p class="text-xs font-bold text-zinc-100 mt-1">Closed <span class="text-[10px] font-normal text-zinc-400">(Sudah Input)</span></p>
+                <p class="text-[10px] text-zinc-500 mt-1">Proyek sudah ada PICA</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="grid grid-cols-2 gap-3">
+          <button @click="activeTab = 'input'" class="bg-pink-600 hover:bg-pink-500 text-white rounded-2xl py-3.5 font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
+            <i class="fa-solid fa-plus text-xs"></i> Catat PICA Baru
+          </button>
+          <button @click="activeTab = 'rekap'" class="bg-[#261521] hover:bg-[#331c2c] text-pink-400 rounded-2xl py-3.5 font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform border border-pink-900/50">
+            <i class="fa-regular fa-calendar-check text-xs"></i> Rekap
+          </button>
+        </div>
+
+        <!-- PERINGATAN KRITIS -->
+        <div class="border border-red-600/50 rounded-2xl p-4 relative bg-[#16161a]" x-show="criticalAlerts.length > 0">
+          <div class="absolute -top-3 left-4 bg-[#0a0a0a] px-2 text-red-500 font-bold text-xs flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-exclamation"></i> Peringatan Kritis: 3+ Hari Belum Input PICA!
+          </div>
+          
+          <div class="mt-2 flex items-start gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-red-500 text-white flex-shrink-0 flex items-center justify-center text-sm shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+              <i class="fa-solid fa-exclamation"></i>
+            </div>
+            <p class="text-xs text-zinc-300 font-medium leading-relaxed">
+              Project di bawah ini sudah 3 hari atau lebih tidak membuat laporan PICA:
+            </p>
+          </div>
+          
+          <div class="space-y-3">
+            <template x-for="item in criticalAlerts" :key="item.id">
+              <div class="bg-[#0a0a0a] rounded-xl p-3 border border-red-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 class="font-black text-white text-sm" x-text="item.name"></h4>
+                  <p class="text-[11px] text-red-500 font-bold flex items-center gap-1 mt-1">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span x-text="item.missedDaysCount + ' hari belum ada PICA'"></span>
+                    <span class="text-zinc-500 font-medium" x-text="'(PIC: ' + item.picName + ')'"></span>
+                  </p>
+                </div>
+                <button @click="quickInputPICA(item.id, todayStr)" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-md active:scale-95 transition-transform flex-shrink-0">
+                  Input PICA
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- PICA TERKINI (DI-INPUT HARI INI) -->
+        <div class="bg-[#16161a] rounded-3xl p-4 border border-zinc-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white tracking-wide">PICA Terkini</h3>
+            <span class="text-[10px] text-pink-400 font-mono font-bold bg-pink-950/40 px-2.5 py-0.5 rounded-full border border-pink-900/50">Hari Ini</span>
+          </div>
+
+          <div class="space-y-2">
+            <template x-for="pica in latestPicaLogs" :key="pica.id">
+              <div @click="openPicaDetailModal(pica)" class="p-3 rounded-2xl border border-zinc-800 bg-[#0a0a0a] hover:border-pink-500/50 transition-all duration-150 cursor-pointer group">
+                <div class="flex items-start justify-between mb-1.5">
+                  <h4 class="text-xs font-bold text-zinc-200 group-hover:text-pink-500 transition-colors" x-text="getProjectName(pica.projectId)"></h4>
+                  <div class="text-right">
+                    <span class="text-[9px] text-zinc-500 font-mono block">Input: <span x-text="formatDateShort(pica.createdAt)"></span></span>
+                    <template x-if="pica.date !== pica.createdAt">
+                      <span class="text-[9px] text-pink-500 font-mono block font-bold mt-0.5">Kejadian: <span x-text="formatDateShort(pica.date)"></span></span>
+                    </template>
+                  </div>
+                </div>
+                <p class="text-[11px] text-zinc-400 line-clamp-1 mb-2" x-text="pica.problem.text"></p>
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="text-zinc-500 flex items-center gap-1"><i class="fa-solid fa-user text-[9px]"></i> <span x-text="getProjectPic(pica.projectId)"></span></span>
+                  <span class="text-emerald-500 font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Selesai</span>
+                </div>
+              </div>
+            </template>
+            <template x-if="latestPicaLogs.length === 0">
+              <div class="text-center py-6 text-zinc-500 text-xs italic">Belum ada laporan PICA hari ini.</div>
+            </template>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ========================================== -->
+      <!-- MENU 2: REKAP (LAPORAN REKAPITULASI PER PROYEK) -->
+      <!-- ========================================== -->
+      <div x-show="activeTab === 'rekap'" x-transition:enter="transition ease-out duration-200 transform opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-4">
+        
+        <div class="bg-[#16161a] p-4 rounded-3xl border border-zinc-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white tracking-wide">Rekapitulasi</h2>
+            <button @click="openShareModal()" class="bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center gap-1.5">
+              <i class="fa-solid fa-share-nodes text-[10px]"></i> Bagikan
+            </button>
+          </div>
+
+          <!-- Navigasi Periode -->
+          <div class="bg-[#0a0a0a] rounded-xl p-3 flex justify-between items-center cursor-pointer border border-zinc-800 transition-colors hover:bg-zinc-900" @click="showRekapDateFilters = !showRekapDateFilters">
+            <div class="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+              <i class="fa-regular fa-calendar text-pink-500"></i>
+              <span>Periode: <span x-text="formatDateShort(rekapStartDate) + (rekapStartDate !== rekapEndDate ? ' - ' + formatDateShort(rekapEndDate) : '')"></span></span>
+            </div>
+            <div class="text-[10px] font-bold flex items-center gap-1 text-pink-400">
+              Ubah Tanggal <i class="fa-solid fa-caret-down transition-transform" :class="showRekapDateFilters ? 'rotate-180' : ''"></i>
+            </div>
+          </div>
+
+          <!-- Hidden Date Inputs -->
+          <div x-show="showRekapDateFilters" x-collapse class="bg-[#0a0a0a] p-3 rounded-xl border border-zinc-800">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] text-zinc-400 block mb-1 font-bold uppercase">Mulai</label>
+                <input type="date" x-model="rekapStartDate" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-pink-500 font-mono">
+              </div>
+              <div>
+                <label class="text-[10px] text-zinc-400 block mb-1 font-bold uppercase">Sampai</label>
+                <input type="date" x-model="rekapEndDate" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-pink-500 font-mono">
+              </div>
+            </div>
+          </div>
+
+          <!-- Pencarian Cepat -->
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-2.5 text-zinc-500 text-xs"></i>
+            <input type="text" x-model="searchQuery" placeholder="Cari masalah, penyebab, PIC..." class="w-full bg-[#0a0a0a] border border-zinc-800 pl-9 pr-4 py-2 rounded-xl text-xs text-zinc-100 focus:outline-none focus:border-pink-500 transition-colors">
+          </div>
+        </div>
+
+        <!-- Daftar Proyek -->
+        <div class="space-y-3">
+          <template x-for="p in filteredRekapProjects" :key="p.id">
+            <div>
+              <!-- PROYEK SUDAH INPUT (HIJAU) -->
+              <template x-if="p.hasPica">
+                <div class="bg-[#16161a] rounded-3xl p-4 border border-emerald-900/50 space-y-3 relative overflow-hidden">
+                  <div class="absolute top-0 right-0 bg-emerald-600/20 text-emerald-500 border-l border-b border-emerald-900/50 text-[9px] font-bold uppercase px-3 py-1 rounded-bl-xl">
+                    Tertib PICA
+                  </div>
+
+                  <div>
+                    <h3 class="text-sm font-bold text-zinc-100" x-text="p.name"></h3>
+                    <p class="text-[10px] text-zinc-500 mt-1 flex items-center gap-2">
+                      <span>PIC: <strong x-text="p.picName" class="text-zinc-300"></strong></span>
+                      <span>•</span>
+                      <span class="text-emerald-400"><strong x-text="p.picaLogs.length"></strong> Kasus Tuntas</span>
+                    </p>
+                  </div>
+
+                  <!-- List Kasus -->
+                  <div class="space-y-2 pt-2 border-t border-zinc-800/50">
+                    <template x-for="(log, idx) in p.picaLogs" :key="log.id">
+                      <div class="bg-[#0a0a0a] rounded-2xl p-3 border border-zinc-800 text-[11px] space-y-2">
+                        <div class="flex justify-between items-center mb-1">
+                          <span class="font-bold text-pink-500" x-text="'Kasus #' + (idx + 1) + ' (' + formatDateShort(log.date) + ')'"></span>
+                          <button @click="openPicaDetailModal(log)" class="text-pink-500 hover:text-pink-400 font-bold flex items-center gap-1 px-2 py-0.5 bg-pink-500/10 rounded">
+                            Detail <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                          </button>
+                        </div>
+                        <div class="grid grid-cols-1 gap-1">
+                          <div><span class="text-zinc-500">Prob:</span> <span x-text="log.problem.text" class="text-zinc-300"></span></div>
+                          <div><span class="text-zinc-500">Cause:</span> <span x-text="log.cause.text" class="text-zinc-300"></span></div>
+                          <div><span class="text-zinc-500">Act:</span> <span x-text="log.action.text" class="text-zinc-300"></span></div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <!-- PROYEK BELUM INPUT (MERAH) -->
+              <template x-if="!p.hasPica">
+                <div class="bg-[#16161a] rounded-3xl p-4 border border-rose-900/50 relative overflow-hidden flex flex-col justify-between">
+                   <div class="flex justify-between items-start mb-3">
+                     <div>
+                        <h3 class="text-sm font-bold text-zinc-100" x-text="p.name"></h3>
+                        <p class="text-[10px] text-zinc-500 mt-1">PIC: <strong x-text="p.picName" class="text-zinc-300"></strong></p>
+                     </div>
+                     <i class="fa-solid fa-circle-exclamation text-rose-500 text-lg"></i>
+                   </div>
+                   <div class="bg-rose-950/30 p-2.5 rounded-xl border border-rose-900/30 flex items-center justify-between gap-2">
+                     <span class="text-[10px] text-rose-400 font-medium">⚠️ PIC belum mengisi PICA</span>
+                     <button @click="quickInputPICA(p.id, rekapEndDate)" class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg active:scale-95 transition-transform flex items-center gap-1">
+                       Input
+                     </button>
+                   </div>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <template x-if="filteredRekapProjects.length === 0">
+            <div class="text-center py-10 bg-[#16161a] rounded-3xl border border-zinc-800">
+              <i class="fa-solid fa-box-open text-3xl text-zinc-700 mb-2"></i>
+              <p class="text-xs text-zinc-500">Belum ada proyek. Tambahkan di menu Proyek.</p>
+            </div>
+          </template>
+        </div>
+
+      </div>
+
+      <!-- ========================================== -->
+      <!-- MENU 3: PROYEK (MASTER DATA) -->
+      <!-- ========================================== -->
+      <div x-show="activeTab === 'proyek'" x-transition:enter="transition ease-out duration-200 transform opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-4">
+        
+        <div class="bg-[#16161a] p-4 rounded-3xl border border-zinc-800 flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white tracking-wide">Master Proyek</h2>
+            <p class="text-[10px] text-zinc-400 mt-0.5">Kelola & pantau kepatuhan</p>
+          </div>
+          <button @click="openProjectModal(null)" class="bg-zinc-800 hover:bg-zinc-700 text-pink-400 font-bold text-xs px-3 py-2 rounded-xl border border-pink-500/30 shadow-lg active:scale-95 transition-transform flex items-center gap-1.5">
+            <i class="fa-solid fa-plus text-[10px]"></i> Baru
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <template x-for="prj in masterProjectsList" :key="prj.id">
+            <div class="bg-[#16161a] rounded-3xl p-4 border border-zinc-800 space-y-3">
+              
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[9px] font-bold px-2 py-0.5 bg-zinc-800 text-pink-400 rounded border border-zinc-700" x-text="prj.code"></span>
+                    <span class="text-[9px] font-bold px-2 py-0.5 rounded border" :class="prj.status === 'Aktif' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : 'bg-zinc-800 text-zinc-500 border-zinc-700'" x-text="prj.status"></span>
+                  </div>
+                  <h3 class="text-sm font-bold text-zinc-100" x-text="prj.name"></h3>
+                  <p class="text-[10px] text-zinc-400 mt-0.5">PIC: <span x-text="prj.picName" class="text-zinc-200"></span></p>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button @click="openProjectModal(prj)" class="w-8 h-8 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center hover:text-pink-400 hover:bg-zinc-800" title="Edit">
+                    <i class="fa-solid fa-pen text-xs"></i>
+                  </button>
+                  <button @click="confirmDeleteProject(prj.id, prj.name)" class="w-8 h-8 rounded-full bg-zinc-900 text-zinc-500 flex items-center justify-center hover:text-rose-400 hover:bg-rose-950/30" title="Hapus Proyek">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Meteran -->
+              <div class="bg-[#0a0a0a] p-3 rounded-2xl border border-zinc-800/80">
+                <div class="flex justify-between text-[10px] mb-1">
+                  <span class="text-zinc-500">Disiplin Input:</span>
+                  <span class="font-bold" :class="getDisciplineColor(prj.disciplineScore)" x-text="prj.disciplineScore + '%'"></span>
+                </div>
+                <div class="w-full bg-zinc-800 rounded-full h-1.5 mb-1 overflow-hidden">
+                  <div class="h-full rounded-full transition-all" :class="getDisciplineBg(prj.disciplineScore)" :style="'width: ' + prj.disciplineScore + '%'"></div>
+                </div>
+                <p class="text-[9px] text-zinc-500 text-right" x-text="prj.filledDaysCount + ' dari ' + prj.totalDaysCount + ' hari terisi'"></p>
+              </div>
+
+              <!-- Action Hari Ini & Lampau -->
+              <div class="pt-1 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-medium text-zinc-400">Status Hari Ini:</span>
+                  <template x-if="prj.hasPicaToday">
+                    <span class="bg-emerald-900/30 text-emerald-400 border border-emerald-800/50 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
+                      <i class="fa-solid fa-check"></i> Selesai
+                    </span>
+                  </template>
+                  <template x-if="!prj.hasPicaToday">
+                    <button @click="quickInputPICA(prj.id, todayStr)" class="bg-pink-600 hover:bg-pink-700 text-white font-bold text-[10px] px-3 py-1 rounded shadow-sm active:scale-95 transition-transform">
+                      Input Sekarang
+                    </button>
+                  </template>
+                </div>
+
+                <template x-if="prj.missedPastDates.length > 0">
+                  <div class="bg-amber-950/30 p-2.5 rounded-xl border border-amber-900/30">
+                    <p class="text-[10px] text-amber-500 mb-1.5 flex items-center gap-1">
+                      <i class="fa-solid fa-clock-rotate-left"></i> Susulan Hari Lampau:
+                    </p>
+                    <div class="flex flex-wrap gap-1.5">
+                      <template x-for="mDate in prj.missedPastDates" :key="mDate">
+                        <button @click="quickInputPICA(prj.id, mDate)" class="bg-[#0a0a0a] border border-amber-900/50 text-amber-400 text-[9px] px-2 py-1 rounded hover:bg-amber-900/20 flex items-center gap-1">
+                          <span x-text="formatDateShort(mDate)"></span> <i class="fa-solid fa-plus"></i>
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+            </div>
+          </template>
+
+          <template x-if="masterProjectsList.length === 0">
+            <div class="text-center py-12 bg-[#16161a] rounded-3xl border border-zinc-800">
+              <i class="fa-regular fa-building text-3xl text-zinc-700 mb-2"></i>
+              <p class="text-xs text-zinc-500 mb-3">Belum ada proyek yang terdaftar.</p>
+              <button @click="openProjectModal(null)" class="bg-pink-600 text-white font-bold text-xs px-4 py-2 rounded-xl">
+                + Tambah Proyek Pertama
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+
+
+      <!-- ========================================== -->
+      <!-- MENU 4: INPUT PICA (FORMULIR DOKUMENTASI) -->
+      <!-- ========================================== -->
+      <div x-show="activeTab === 'input'" x-transition:enter="transition ease-out duration-200 transform opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-4">
+        
+        <div class="bg-[#16161a] p-4 rounded-3xl shadow-lg border border-zinc-800 space-y-4">
+          <div class="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+            <div>
+              <h2 class="text-base font-bold text-white tracking-wide">Formulir PICA</h2>
+              <p class="text-[10px] text-zinc-400">Dokumentasi 5 Tahap Penanganan</p>
+            </div>
+            <span class="w-8 h-8 flex items-center justify-center bg-pink-500/10 text-pink-500 rounded-full border border-pink-500/20">
+              <i class="fa-solid fa-pen-nib"></i>
+            </span>
+          </div>
+
+          <!-- Pemilihan Proyek & Tanggal -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] font-bold text-zinc-300 block mb-1">Pilih Proyek <span class="text-pink-500">*</span></label>
+              <select x-model="formPica.projectId" @change="validateFormDate()" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-pink-500">
+                <option value="">-- Pilih Proyek --</option>
+                <template x-for="prj in projects" :key="prj.id">
+                  <option :value="prj.id" x-text="prj.code + ' - ' + prj.name"></option>
+                </template>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-bold text-zinc-300 block mb-1">Tanggal Kejadian <span class="text-pink-500">*</span></label>
+              <input type="date" x-model="formPica.date" @change="validateFormDate()" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-pink-500 font-mono">
+            </div>
+          </div>
+
+          <div x-show="dateAlreadyExistsNotice" class="bg-amber-950/30 border border-amber-900/50 rounded-xl p-3 text-[10px] text-amber-200 flex items-start gap-2">
+            <i class="fa-solid fa-circle-info mt-0.5 text-amber-500"></i>
+            <p>Laporan PICA pada tanggal ini sudah ada. Menyimpan form ini akan memperbarui atau menambah catatan baru di tanggal tersebut.</p>
+          </div>
+
+          <!-- 5 TAHAP DOKUMENTASI -->
+          <div class="space-y-3 pt-2 border-t border-zinc-800/80">
+            <!-- Stage 1 -->
+            <div class="bg-[#0a0a0a] p-3 rounded-2xl border border-zinc-800/80">
+              <label class="text-[11px] font-bold text-zinc-100 flex justify-between mb-1">
+                <span>1. Problem (Masalah)</span> <span class="text-[9px] text-zinc-500 font-normal">Wajib</span>
+              </label>
+              <textarea x-model="formPica.problemText" rows="2" placeholder="Deskripsi temuan..." class="w-full bg-[#16161a] border border-zinc-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-pink-500 mb-2"></textarea>
+              <div class="flex items-center gap-2">
+                <label class="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer hover:bg-zinc-800">
+                  <i class="fa-solid fa-camera text-pink-500"></i> Ambil/Pilih Foto
+                  <input type="file" accept="image/*" class="hidden" @change="handlePhotoUpload($event, 'problem')">
+                </label>
+                <template x-if="formPica.problemPhoto">
+                  <span class="text-[9px] text-emerald-500 font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Foto Terpilih</span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Stage 2 -->
+            <div class="bg-[#0a0a0a] p-3 rounded-2xl border border-zinc-800/80">
+              <label class="text-[11px] font-bold text-zinc-100 flex justify-between mb-1">
+                <span>2. Cause (Akar Penyebab)</span> <span class="text-[9px] text-zinc-500 font-normal">Wajib</span>
+              </label>
+              <textarea x-model="formPica.causeText" rows="2" placeholder="Analisis penyebab..." class="w-full bg-[#16161a] border border-zinc-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-pink-500 mb-2"></textarea>
+              <div class="flex items-center gap-2">
+                <label class="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer hover:bg-zinc-800">
+                  <i class="fa-solid fa-camera text-pink-500"></i> Ambil/Pilih Foto
+                  <input type="file" accept="image/*" class="hidden" @change="handlePhotoUpload($event, 'cause')">
+                </label>
+                <template x-if="formPica.causePhoto">
+                  <span class="text-[9px] text-emerald-500 font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Foto Terpilih</span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Stage 3 -->
+            <div class="bg-[#0a0a0a] p-3 rounded-2xl border border-zinc-800/80">
+              <label class="text-[11px] font-bold text-zinc-100 flex justify-between mb-1">
+                <span>3. Action (Tindakan)</span> <span class="text-[9px] text-zinc-500 font-normal">Wajib</span>
+              </label>
+              <textarea x-model="formPica.actionText" rows="2" placeholder="Solusi cepat..." class="w-full bg-[#16161a] border border-zinc-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-pink-500 mb-2"></textarea>
+              <div class="flex items-center gap-2">
+                <label class="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer hover:bg-zinc-800">
+                  <i class="fa-solid fa-camera text-pink-500"></i> Ambil/Pilih Foto
+                  <input type="file" accept="image/*" class="hidden" @change="handlePhotoUpload($event, 'action')">
+                </label>
+                <template x-if="formPica.actionPhoto">
+                  <span class="text-[9px] text-emerald-500 font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Foto Terpilih</span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Stage 4 -->
+            <div class="bg-[#0a0a0a] p-3 rounded-2xl border border-zinc-800/80">
+              <label class="text-[11px] font-bold text-zinc-100 flex justify-between mb-1">
+                <span>4. Process (Proses)</span> <span class="text-[9px] text-zinc-500 font-normal">Wajib</span>
+              </label>
+              <textarea x-model="formPica.processText" rows="2" placeholder="Langkah pengerjaan..." class="w-full bg-[#16161a] border border-zinc-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-pink-500 mb-2"></textarea>
+              <div class="flex items-center gap-2">
+                <label class="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer hover:bg-zinc-800">
+                  <i class="fa-solid fa-camera text-pink-500"></i> Ambil/Pilih Foto
+                  <input type="file" accept="image/*" class="hidden" @change="handlePhotoUpload($event, 'process')">
+                </label>
+                <template x-if="formPica.processPhoto">
+                  <span class="text-[9px] text-emerald-500 font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Foto Terpilih</span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Stage 5 -->
+            <div class="bg-[#0a0a0a] p-3 rounded-2xl border border-zinc-800/80">
+              <label class="text-[11px] font-bold text-zinc-100 flex justify-between mb-1">
+                <span>5. Result (Hasil)</span> <span class="text-[9px] text-zinc-500 font-normal">Wajib</span>
+              </label>
+              <textarea x-model="formPica.resultText" rows="2" placeholder="Kondisi setelah tuntas..." class="w-full bg-[#16161a] border border-zinc-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-pink-500 mb-2"></textarea>
+              <div class="flex items-center gap-2">
+                <label class="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer hover:bg-zinc-800">
+                  <i class="fa-solid fa-camera text-pink-500"></i> Ambil/Pilih Foto
+                  <input type="file" accept="image/*" class="hidden" @change="handlePhotoUpload($event, 'result')">
+                </label>
+                <template x-if="formPica.resultPhoto">
+                  <span class="text-[9px] text-emerald-500 font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Foto Terpilih</span>
+                </template>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="pt-3">
+            <button @click="savePicaLog()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+              <i class="fa-solid fa-floppy-disk text-pink-200"></i> SIMPAN & TUNTASKAN
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a] border-t border-zinc-900 max-w-md md:max-w-xl mx-auto pb-safe">
+      <div class="grid grid-cols-4 text-center py-2 px-2 gap-1">
+        
+        <!-- Dashboard -->
+        <button @click="activeTab = 'dashboard'" class="flex flex-col items-center justify-center py-1.5 rounded-xl transition-colors relative" :class="activeTab === 'dashboard' ? 'text-white' : 'text-zinc-600 hover:text-zinc-400'">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center mb-0.5 transition-colors" :class="activeTab === 'dashboard' ? 'bg-pink-600' : ''">
+            <i class="fa-solid fa-border-all text-lg"></i>
+          </div>
+          <span class="text-[9px] font-medium mt-0.5">Dashboard</span>
+        </button>
+
+        <!-- Rekap -->
+        <button @click="activeTab = 'rekap'" class="flex flex-col items-center justify-center py-1.5 rounded-xl transition-colors relative" :class="activeTab === 'rekap' ? 'text-white' : 'text-zinc-600 hover:text-zinc-400'">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center mb-0.5 transition-colors" :class="activeTab === 'rekap' ? 'bg-pink-600' : ''">
+            <i class="fa-regular fa-calendar-check text-lg"></i>
+          </div>
+          <span class="text-[9px] font-medium mt-0.5">Rekap</span>
+        </button>
+
+        <!-- Proyek -->
+        <button @click="activeTab = 'proyek'" class="flex flex-col items-center justify-center py-1.5 rounded-xl transition-colors relative" :class="activeTab === 'proyek' ? 'text-white' : 'text-zinc-600 hover:text-zinc-400'">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center mb-0.5 transition-colors" :class="activeTab === 'proyek' ? 'bg-pink-600' : ''">
+            <i class="fa-regular fa-building text-lg"></i>
+          </div>
+          <span class="text-[9px] font-medium mt-0.5">Proyek</span>
+        </button>
+
+        <!-- Input PICA -->
+        <button @click="activeTab = 'input'" class="flex flex-col items-center justify-center py-1.5 rounded-xl transition-colors relative" :class="activeTab === 'input' ? 'text-white' : 'text-zinc-600 hover:text-zinc-400'">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center mb-0.5 transition-colors" :class="activeTab === 'input' ? 'bg-pink-600' : ''">
+            <i class="fa-solid fa-plus text-lg"></i>
+          </div>
+          <span class="text-[9px] font-medium mt-0.5">Input PICA</span>
+        </button>
+
+      </div>
+    </nav>
+
+    <!-- MODAL 1: QUICK FILTER -->
+    <div x-show="showQuickFilterModal" style="display: none;" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+      <div @click.away="showQuickFilterModal = false" class="bg-[#16161a] border border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-4 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full shadow-lg" :class="quickFilterType === 'belum' ? 'bg-rose-500 shadow-rose-500/50' : 'bg-emerald-500 shadow-emerald-500/50'"></span>
+            <span x-text="quickFilterType === 'belum' ? 'Proyek Belum Input (Open)' : 'Proyek Sudah Input (Closed)'"></span>
+          </h3>
+          <button @click="showQuickFilterModal = false" class="text-zinc-500 hover:text-white text-sm p-1">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-2 no-scrollbar pr-1">
+          <template x-for="item in quickFilterList" :key="item.id">
+            <div class="p-3 rounded-2xl border flex items-center justify-between" :class="quickFilterType === 'belum' ? 'bg-rose-950/20 border-rose-900/30' : 'bg-emerald-950/20 border-emerald-900/30'">
+              <div>
+                <p class="text-[11px] font-bold text-white" x-text="item.name"></p>
+                <p class="text-[10px] text-zinc-400 mt-1">PIC: <span x-text="item.picName"></span></p>
+              </div>
+              <template x-if="quickFilterType === 'belum'">
+                <button @click="quickInputPICA(item.id, todayStr); showQuickFilterModal = false;" class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg active:scale-95 transition-transform">
+                  Input
+                </button>
+              </template>
+              <template x-if="quickFilterType === 'sudah'">
+                <span class="text-emerald-500 font-bold text-xs"><i class="fa-solid fa-check"></i></span>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 2: SHARE REPORT -->
+    <div x-show="showShareModal" style="display: none;" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+      <div @click.away="showShareModal = false" class="bg-[#16161a] border border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-4 space-y-4 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-brands fa-whatsapp text-emerald-500 text-base"></i> Draf Laporan
+          </h3>
+          <button @click="showShareModal = false" class="text-zinc-500 hover:text-white text-sm p-1">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <textarea x-model="shareDraftText" rows="10" readonly class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-3 text-[10px] font-mono text-zinc-300 focus:outline-none"></textarea>
+
+        <div class="flex items-center gap-3">
+          <button @click="copyShareText()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs py-3 rounded-xl transition-transform active:scale-95 border border-zinc-700">
+            <i class="fa-solid fa-copy"></i> Salin Teks
+          </button>
+          <button @click="shareViaWhatsapp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl transition-transform active:scale-95">
+            <i class="fa-brands fa-whatsapp"></i> Ke WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 3: MASTER PROYEK FORM -->
+    <div x-show="showProjectModal" style="display: none;" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+      <div @click.away="showProjectModal = false" class="bg-[#16161a] border border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <h3 class="text-sm font-bold text-white" x-text="formProject.id ? 'Edit Data Proyek' : 'Pendaftaran Proyek Baru'"></h3>
+          <button @click="showProjectModal = false" class="text-zinc-500 hover:text-white text-sm p-1">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="font-bold text-zinc-400 block mb-1">Nama Proyek</label>
+            <input type="text" x-model="formProject.name" placeholder="mis. Pembangunan Jembatan" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="font-bold text-zinc-400 block mb-1">Kode</label>
+              <input type="text" x-model="formProject.code" placeholder="PRJ-001" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-pink-500">
+            </div>
+            <div>
+              <label class="font-bold text-zinc-400 block mb-1">Nama PIC</label>
+              <input type="text" x-model="formProject.picName" placeholder="Nama PIC" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="font-bold text-zinc-400 block mb-1">Lokasi</label>
+              <input type="text" x-model="formProject.location" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
+            </div>
+            <div>
+              <label class="font-bold text-zinc-400 block mb-1">Tgl Mulai</label>
+              <input type="date" x-model="formProject.startDate" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500 font-mono">
+            </div>
+          </div>
+          <div>
+            <label class="font-bold text-zinc-400 block mb-1">Status Proyek</label>
+            <select x-model="formProject.status" class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
+              <option value="Aktif">Aktif Berjalan</option>
+              <option value="Selesai">Selesai</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button @click="saveProject()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs py-3 rounded-xl transition-transform active:scale-95">
+            Simpan Data
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 4: DETAIL PICA -->
+    <div x-show="showPicaDetailModal" style="display: none;" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+      <div @click.away="showPicaDetailModal = false" class="bg-[#16161a] border border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-4 space-y-4 max-h-[90vh] flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div>
+            <h3 class="text-xs font-bold text-white" x-text="getProjectName(selectedPicaDetail?.projectId)"></h3>
+            <p class="text-[9px] text-zinc-500 font-mono mt-0.5" x-text="formatDateFull(selectedPicaDetail?.date)"></p>
+          </div>
+          <button @click="showPicaDetailModal = false" class="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <template x-if="selectedPicaDetail">
+          <div class="flex-1 overflow-y-auto space-y-4 no-scrollbar text-xs pr-1">
+            
+            <div class="space-y-1.5">
+              <span class="inline-block bg-pink-900/30 text-pink-400 text-[9px] font-bold px-2 py-0.5 rounded border border-pink-900/50">1. Problem</span>
+              <p class="text-zinc-300 bg-[#0a0a0a] p-3 rounded-xl border border-zinc-800/80" x-text="selectedPicaDetail.problem.text"></p>
+              <template x-if="selectedPicaDetail.problem.photo">
+                <img :src="selectedPicaDetail.problem.photo" class="w-full h-32 object-cover rounded-xl mt-1 border border-zinc-800">
+              </template>
+            </div>
+
+            <div class="space-y-1.5">
+              <span class="inline-block bg-pink-900/30 text-pink-400 text-[9px] font-bold px-2 py-0.5 rounded border border-pink-900/50">2. Cause</span>
+              <p class="text-zinc-300 bg-[#0a0a0a] p-3 rounded-xl border border-zinc-800/80" x-text="selectedPicaDetail.cause.text"></p>
+              <template x-if="selectedPicaDetail.cause.photo">
+                <img :src="selectedPicaDetail.cause.photo" class="w-full h-32 object-cover rounded-xl mt-1 border border-zinc-800">
+              </template>
+            </div>
+
+            <div class="space-y-1.5">
+              <span class="inline-block bg-pink-900/30 text-pink-400 text-[9px] font-bold px-2 py-0.5 rounded border border-pink-900/50">3. Action</span>
+              <p class="text-zinc-300 bg-[#0a0a0a] p-3 rounded-xl border border-zinc-800/80" x-text="selectedPicaDetail.action.text"></p>
+              <template x-if="selectedPicaDetail.action.photo">
+                <img :src="selectedPicaDetail.action.photo" class="w-full h-32 object-cover rounded-xl mt-1 border border-zinc-800">
+              </template>
+            </div>
+
+            <div class="space-y-1.5">
+              <span class="inline-block bg-pink-900/30 text-pink-400 text-[9px] font-bold px-2 py-0.5 rounded border border-pink-900/50">4. Process</span>
+              <p class="text-zinc-300 bg-[#0a0a0a] p-3 rounded-xl border border-zinc-800/80" x-text="selectedPicaDetail.process.text"></p>
+              <template x-if="selectedPicaDetail.process.photo">
+                <img :src="selectedPicaDetail.process.photo" class="w-full h-32 object-cover rounded-xl mt-1 border border-zinc-800">
+              </template>
+            </div>
+
+            <div class="space-y-1.5">
+              <span class="inline-block bg-pink-900/30 text-pink-400 text-[9px] font-bold px-2 py-0.5 rounded border border-pink-900/50">5. Result</span>
+              <p class="text-zinc-300 bg-[#0a0a0a] p-3 rounded-xl border border-zinc-800/80" x-text="selectedPicaDetail.result.text"></p>
+              <template x-if="selectedPicaDetail.result.photo">
+                <img :src="selectedPicaDetail.result.photo" class="w-full h-32 object-cover rounded-xl mt-1 border border-zinc-800">
+              </template>
+            </div>
+
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div x-show="toast.show" style="display: none;" x-transition:enter="transition ease-out duration-300 transform translate-y-[-20px] opacity-0" x-transition:enter-end="translate-y-0 opacity-100" class="fixed top-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-xs px-4">
+      <div class="bg-zinc-800 text-white p-3 rounded-2xl shadow-2xl border border-zinc-700 text-xs flex items-center gap-3">
+        <div class="w-6 h-6 rounded-full bg-pink-600 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid text-[10px]" :class="toast.icon || 'fa-check'"></i>
+        </div>
+        <span x-text="toast.message" class="font-medium"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'pica-project-tracker-prod';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
+    };
+
+    let db = null;
+    let auth = null;
+
+    window.initFirebaseApp = async function(appInstance) {
+      try {
+        if (firebaseConfig.projectId) {
+          const app = initializeApp(firebaseConfig);
+          db = getFirestore(app);
+          auth = getAuth(app);
+
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+
+          appInstance.isCloudConnected = true;
+          appInstance.startRealtimeSync(db, appId);
+        } else {
+          appInstance.isCloudConnected = false;
+        }
+      } catch (err) {
+        console.error("Firebase connection error:", err);
+        appInstance.isCloudConnected = false;
+      }
+    };
+
+    window.fbSaveProject = async function(projectData) {
+      if (!db) return false;
+      try {
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'projects');
+        await setDoc(doc(colRef, projectData.id), projectData);
+        return true;
+      } catch (e) {
+        console.error("Save project error:", e);
+        return false;
+      }
+    };
+
+    window.fbDeleteProject = async function(projectId) {
+      if (!db) return false;
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'projects', projectId);
+        await deleteDoc(docRef);
+        return true;
+      } catch (e) {
+        console.error("Delete project error:", e);
+        return false;
+      }
+    };
+
+    window.fbSavePicaLog = async function(picaData) {
+      if (!db) return false;
+      try {
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'pica_logs');
+        await setDoc(doc(colRef, picaData.id), picaData);
+        return true;
+      } catch (e) {
+        console.error("Save pica error:", e);
+        return false;
+      }
+    };
+  </script>
+
+  <script>
+    function picaApp() {
+      return {
+        activeTab: 'dashboard',
+        isCloudConnected: false,
+        showDateFilters: false,
+        showRekapDateFilters: false,
+        
+        todayStr: new Date().toISOString().split('T')[0],
+        startDateFilter: new Date().toISOString().split('T')[0],
+        endDateFilter: new Date().toISOString().split('T')[0],
+        rekapStartDate: new Date().toISOString().split('T')[0],
+        rekapEndDate: new Date().toISOString().split('T')[0],
+
+        activeProjectCount: 0,
+        picaSubmittedCount: 0,
+        completionRate: 0,
+        notSubmittedCount: 0,
+        submittedCount: 0,
+        criticalAlerts: [],
+
+        searchQuery: '',
+
+        showQuickFilterModal: false,
+        quickFilterType: 'belum',
+        quickFilterList: [],
+        showShareModal: false,
+        shareDraftText: '',
+        showProjectModal: false,
+        formProject: { id: null, name: '', code: 'PRJ-', picName: '', location: '', startDate: new Date().toISOString().split('T')[0], status: 'Aktif' },
+        showPicaDetailModal: false,
+        selectedPicaDetail: null,
+        dateAlreadyExistsNotice: false,
+        toast: { show: false, message: '', icon: '' },
+
+        formPica: { projectId: '', date: new Date().toISOString().split('T')[0], problemText: '', problemPhoto: null, causeText: '', causePhoto: null, actionText: '', actionPhoto: null, processText: '', processPhoto: null, resultText: '', resultPhoto: null },
+
+        projects: [],
+        picaLogs: [],
+
+        initApp() {
+          if (typeof window.initFirebaseApp === 'function') {
+            window.initFirebaseApp(this);
+          }
+
+          if (!this.isCloudConnected) {
+            const savedProjects = localStorage.getItem('pica_projects_v4');
+            const savedLogs = localStorage.getItem('pica_logs_v4');
+            if (savedProjects) { try { this.projects = JSON.parse(savedProjects); } catch (e) {} }
+            if (savedLogs) { try { this.picaLogs = JSON.parse(savedLogs); } catch (e) {} }
+            this.recalculateKPI();
+          }
+        },
+
+        startRealtimeSync(dbInstance, targetAppId) {
+          try {
+            const projCol = collection(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'projects');
+            onSnapshot(projCol, (snapshot) => {
+              const loadedProjects = [];
+              snapshot.forEach(docSnap => loadedProjects.push(docSnap.data()));
+              this.projects = loadedProjects;
+              this.recalculateKPI();
+            }, (error) => { console.error("Projects sync error:", error); });
+
+            const logsCol = collection(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'pica_logs');
+            onSnapshot(logsCol, (snapshot) => {
+              const loadedLogs = [];
+              snapshot.forEach(docSnap => loadedLogs.push(docSnap.data()));
+              this.picaLogs = loadedLogs;
+              this.recalculateKPI();
+            }, (error) => { console.error("Logs sync error:", error); });
+          } catch (e) {
+            console.error("Realtime setup failed:", e);
+          }
+        },
+
+        saveLocally() {
+          if (!this.isCloudConnected) {
+            localStorage.setItem('pica_projects_v4', JSON.stringify(this.projects));
+            localStorage.setItem('pica_logs_v4', JSON.stringify(this.picaLogs));
+          }
+        },
+
+        formatDateShort(dateStr) {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        },
+
+        formatDateFull(dateStr) {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        },
+
+        recalculateKPI() {
+          const activePrjs = this.projects.filter(p => p.status === 'Aktif');
+          this.activeProjectCount = activePrjs.length;
+
+          const logsInRange = this.picaLogs.filter(l => l.date >= this.startDateFilter && l.date <= this.endDateFilter);
+          const prjIdsWithPica = new Set(logsInRange.map(l => l.projectId));
+
+          this.picaSubmittedCount = prjIdsWithPica.size;
+          this.notSubmittedCount = Math.max(0, this.activeProjectCount - this.picaSubmittedCount);
+          this.submittedCount = this.picaSubmittedCount;
+          this.completionRate = this.activeProjectCount > 0 ? Math.round((this.picaSubmittedCount / this.activeProjectCount) * 100) : 0;
+
+          this.criticalAlerts = [];
+          activePrjs.forEach(p => {
+            const missedDays = this.calculateConsecutiveMissedDays(p.id, this.todayStr);
+            if (missedDays >= 3) {
+              this.criticalAlerts.push({ id: p.id, name: p.name, picName: p.picName, missedDaysCount: missedDays });
+            }
+          });
+        },
+
+        calculateConsecutiveMissedDays(projectId, fromDateStr) {
+          let consecutive = 0;
+          let curr = new Date(fromDateStr);
+          for (let i = 0; i < 60; i++) {
+            const dStr = curr.toISOString().split('T')[0];
+            const hasLog = this.picaLogs.some(l => l.projectId === projectId && l.date === dStr);
+            if (!hasLog) consecutive++;
+            else break;
+            curr.setDate(curr.getDate() - 1);
+          }
+          return consecutive;
+        },
+
+        get latestPicaLogs() {
+          return [...this.picaLogs]
+            .filter(pica => pica.createdAt === this.todayStr)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt) || b.id.localeCompare(a.id));
+        },
+
+        getProjectName(id) { const p = this.projects.find(x => x.id === id); return p ? p.name : 'Unknown'; },
+        getProjectPic(id) { const p = this.projects.find(x => x.id === id); return p ? p.picName : '-'; },
+
+        openQuickFilterModal(type) {
+          this.quickFilterType = type;
+          const logsOnDate = this.picaLogs.filter(l => l.date >= this.startDateFilter && l.date <= this.endDateFilter);
+          const filledPrjIds = new Set(logsOnDate.map(l => l.projectId));
+          this.quickFilterList = this.projects.filter(p => p.status === 'Aktif' && (type === 'belum' ? !filledPrjIds.has(p.id) : filledPrjIds.has(p.id)));
+          this.showQuickFilterModal = true;
+        },
+
+        quickInputPICA(projectId, targetDate) {
+          this.formPica.projectId = projectId;
+          this.formPica.date = targetDate || this.todayStr;
+          this.validateFormDate();
+          this.activeTab = 'input';
+        },
+
+        get filteredRekapProjects() {
+          const query = this.searchQuery.toLowerCase().trim();
+          return this.projects.map(p => {
+            const logs = this.picaLogs.filter(l => l.projectId === p.id && l.date >= this.rekapStartDate && l.date <= this.rekapEndDate);
+            let match = true;
+            if (query) {
+              match = p.name.toLowerCase().includes(query) || p.picName.toLowerCase().includes(query) || logs.some(l => l.problem.text.toLowerCase().includes(query));
+            }
+            return { ...p, hasPica: logs.length > 0, picaLogs: logs, matchSearch: match };
+          }).filter(p => p.matchSearch);
+        },
+
+        openShareModal() {
+          const rekapList = this.filteredRekapProjects;
+          let done = 0, pending = 0;
+          let dateStr = this.formatDateFull(this.rekapStartDate);
+          if (this.rekapStartDate !== this.rekapEndDate) {
+            dateStr = this.formatDateShort(this.rekapStartDate) + ' - ' + this.formatDateShort(this.rekapEndDate);
+          }
+          let text = `*LAPORAN PICA*\n📅 ${dateStr}\n\n`;
+          rekapList.forEach(p => {
+            if (p.hasPica) {
+              done++;
+              text += `✅ *${p.name}*\nPIC: ${p.picName}\n`;
+              p.picaLogs.forEach((l, i) => text += `Kasus #${i+1}: ${l.problem.text}\n`);
+              text += `\n`;
+            } else {
+              pending++;
+              text += `🔴 *${p.name}* (BELUM INPUT)\n\n`;
+            }
+          });
+          text += `📊 Kepatuhan: ${rekapList.length ? Math.round((done/rekapList.length)*100) : 0}%\n`;
+          this.shareDraftText = text;
+          this.showShareModal = true;
+        },
+
+        copyShareText() {
+          navigator.clipboard.writeText(this.shareDraftText).then(() => this.showToast('Disalin!', 'fa-copy')).catch(err => {
+            const el = document.createElement('textarea'); el.value = this.shareDraftText; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); this.showToast('Disalin!', 'fa-copy');
+          });
+        },
+        shareViaWhatsapp() { window.open(`https://wa.me/?text=${encodeURIComponent(this.shareDraftText)}`, '_blank'); },
+
+        get masterProjectsList() {
+          return this.projects.map(p => {
+            let totalDays = 0, filledDays = 0;
+            let missedPastDates = [];
+            let curr = new Date(p.startDate);
+            const end = new Date(this.todayStr);
+            while (curr <= end) {
+              totalDays++;
+              const dStr = curr.toISOString().split('T')[0];
+              if (this.picaLogs.some(l => l.projectId === p.id && l.date === dStr)) filledDays++;
+              else if (dStr !== this.todayStr) missedPastDates.push(dStr);
+              curr.setDate(curr.getDate() + 1);
+            }
+            return {
+              ...p,
+              disciplineScore: totalDays ? Math.round((filledDays/totalDays)*100) : 100,
+              totalDaysCount: totalDays, filledDaysCount: filledDays,
+              hasPicaToday: this.picaLogs.some(l => l.projectId === p.id && l.date === this.todayStr),
+              missedPastDates: missedPastDates.reverse()
+            };
+          });
+        },
+
+        getDisciplineColor(score) { return score >= 85 ? 'text-emerald-500' : (score >= 70 ? 'text-amber-500' : 'text-rose-500'); },
+        getDisciplineBg(score) { return score >= 85 ? 'bg-emerald-500' : (score >= 70 ? 'bg-amber-500' : 'bg-rose-500'); },
+
+        openProjectModal(p) {
+          this.formProject = p ? { ...p } : { id: null, name: '', code: 'PRJ-', picName: '', location: '', startDate: this.todayStr, status: 'Aktif' };
+          this.showProjectModal = true;
+        },
+
+        async saveProject() {
+          if (!this.formProject.name) return this.showToast('Nama kosong!', 'fa-exclamation');
+          
+          const projToSave = this.formProject.id ? { ...this.formProject } : { ...this.formProject, id: 'prj-' + Date.now() };
+
+          if (this.isCloudConnected && typeof window.fbSaveProject === 'function') {
+            const success = await window.fbSaveProject(projToSave);
+            if (!success) {
+              this.showToast('Gagal sinkron cloud!', 'fa-exclamation');
+              return;
+            }
+          } else {
+            if (this.formProject.id) {
+              const idx = this.projects.findIndex(x => x.id === this.formProject.id);
+              if (idx !== -1) this.projects[idx] = projToSave;
+            } else {
+              this.projects.push(projToSave);
+            }
+            this.saveLocally();
+          }
+
+          this.showProjectModal = false;
+          this.recalculateKPI();
+          this.showToast('Data tersimpan!', 'fa-check');
+        },
+
+        async confirmDeleteProject(projectId, projectName) {
+          if (confirm(`Yakin ingin menghapus proyek "${projectName}"? Semua data rekam jejak proyek ini akan ikut terhapus.`)) {
+            if (this.isCloudConnected && typeof window.fbDeleteProject === 'function') {
+              const success = await window.fbDeleteProject(projectId);
+              if (!success) {
+                this.showToast('Gagal menghapus dari cloud!', 'fa-exclamation');
+                return;
+              }
+            } else {
+              this.projects = this.projects.filter(p => p.id !== projectId);
+              this.picaLogs = this.picaLogs.filter(l => l.projectId !== projectId);
+              this.saveLocally();
+            }
+            this.recalculateKPI();
+            this.showToast('Proyek dihapus!', 'fa-trash');
+          }
+        },
+
+        validateFormDate() {
+          this.dateAlreadyExistsNotice = !!(this.formPica.projectId && this.formPica.date && this.picaLogs.some(l => l.projectId === this.formPica.projectId && l.date === this.formPica.date));
+        },
+
+        handlePhotoUpload(event, key) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            this.formPica[key + 'Photo'] = e.target.result;
+            this.showToast('Foto berhasil dimuat!', 'fa-camera');
+          };
+          reader.readAsDataURL(file);
+        },
+
+        async savePicaLog() {
+          if (!this.formPica.projectId || !this.formPica.problemText) return this.showToast('Lengkapi form!', 'fa-exclamation');
+          
+          const newLog = {
+            id: 'log-' + Date.now(), 
+            projectId: this.formPica.projectId, 
+            date: this.formPica.date, 
+            createdAt: this.todayStr,
+            problem: { text: this.formPica.problemText, photo: this.formPica.problemPhoto },
+            cause: { text: this.formPica.causeText, photo: this.formPica.causePhoto },
+            action: { text: this.formPica.actionText, photo: this.formPica.actionPhoto },
+            process: { text: this.formPica.processText, photo: this.formPica.processPhoto },
+            result: { text: this.formPica.resultText, photo: this.formPica.resultPhoto }
+          };
+
+          if (this.isCloudConnected && typeof window.fbSavePicaLog === 'function') {
+            const success = await window.fbSavePicaLog(newLog);
+            if (!success) {
+              this.showToast('Gagal simpan ke cloud!', 'fa-exclamation');
+              return;
+            }
+          } else {
+            this.picaLogs.push(newLog);
+            this.saveLocally();
+          }
+
+          this.formPica = { projectId: '', date: this.todayStr, problemText: '', problemPhoto: null, causeText: '', causePhoto: null, actionText: '', actionPhoto: null, processText: '', processPhoto: null, resultText: '', resultPhoto: null };
+          this.dateAlreadyExistsNotice = false;
+          this.recalculateKPI();
+          this.activeTab = 'dashboard';
+          this.showToast('PICA Disimpan & Disinkronkan!', 'fa-check');
+        },
+
+        openPicaDetailModal(p) { this.selectedPicaDetail = p; this.showPicaDetailModal = true; },
+        showToast(msg, icon) { this.toast.message = msg; this.toast.icon = icon; this.toast.show = true; setTimeout(() => this.toast.show = false, 2500); }
+      };
+    }
+  </script>
+</body>
+</html>
