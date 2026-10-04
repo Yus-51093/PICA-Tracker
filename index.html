@@ -824,13 +824,14 @@
     import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'pica-project-tracker-prod';
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-      apiKey: "",
-      authDomain: "",
-      projectId: "",
-      storageBucket: "",
-      messagingSenderId: "",
-      appId: ""
+    const firebaseConfig = {
+      apiKey: "AIzaSyDRcbx0a-0RrWkOHcTAanmieLObeqwmneY",
+      authDomain: "pica-tracker-4e936.firebaseapp.com",
+      projectId: "pica-tracker-4e936",
+      storageBucket: "pica-tracker-4e936.firebasestorage.app",
+      messagingSenderId: "741311842345",
+      appId: "1:741311842345:web:e59823e5da0a07332df438",
+      measurementId: "G-Z1T1DX5ZEF"
     };
 
     let db = null;
